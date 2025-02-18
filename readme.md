@@ -1,142 +1,97 @@
-# Supported resource types:
-- organization
-- folder
-- project
-- appengine_application
-- appengine_service
-- appengine_version
-- bucket
-- bigquery_dataset
-- bigquery_table
-- compute_firewall_rule
-- compute_disk
-- compute_snapshot
-- service_account
+# Forseti Security Implementation (Personal Open-Source Project)
 
-## <a name="allowed-sub-resources"></a> Here are the list of allowed sub resource type you can define per resource type:
-- organization
-  - folder
-  - project
-- folder
-  - folder
-  - project
-- project
-  - appengine_application (Only one is allowed per project.)
-  - bigquery_dataset
-  - bucket
-  - compute_firewall_rule
-  - compute_disk
-  - compute_snapshot
-  - service_account
-- bigquery_dataset
-  - bigquery_table
-- appengine_application
-  - appengine_service
-- appengine_service
-  - appengine_version
-- bucket
-  - N/A
-- service_account
-  - N/A
-- bigquery_table
-  - N/A
+## Overview
+Forseti Security is an open-source tool that helps secure Google Cloud Platform (GCP) environments by auditing IAM policies, scanning resources, enforcing security rules, and providing visibility into cloud security settings. This project involves implementing Forseti Security for a GCP organization, configuring policy enforcement, and integrating automated compliance checks.
 
-Update `config.yaml` file with organization structure and run `python data_generator.py` 
-to generate the cai dump files for IAM and resource.
+## Features
+- **Automated Cloud Security Auditing**: Continuously scans GCP resources for misconfigurations.
+- **IAM Policy Monitoring**: Tracks access control changes and detects unauthorized modifications.
+- **Policy Enforcement & Correction**: Ensures compliance with predefined security policies.
+- **Logging & Alerting**: Provides visibility into policy violations and security threats.
+- **Infrastructure as Code (IaC) Setup**: Uses Terraform for automated deployment.
 
-root_resource_type can either be `organization`, `folder` or `project`.
+## Technologies & Tools Used
+- **Cloud Platform**: Google Cloud Platform (GCP)
+- **Infrastructure as Code**: Terraform
+- **Security Tools**: Forseti Security, IAM Analyzer
+- **Automation & Scripting**: Bash, Python
+- **Version Control**: Git, GitHub
+- **Logging & Monitoring**: Stackdriver Logging, Cloud Functions
 
-Note: IAM policies are randomly generated per resource that can have an IAM policy (at least one role/member binding).
+## Installation & Setup
+### Prerequisites
+1. Google Cloud Project with appropriate permissions.
+2. Cloud Shell or a local machine with the Google Cloud SDK installed.
+3. Terraform installed for infrastructure automation.
+4. A GitHub repository for version control.
 
-# How to configure `config.yaml`
-
-User will need to specify the root_resource_id and root_resource_type as the root resource of the generated mock data.
-
-As for `resource structure`, user will need to specify the count of the resource for each of the resource type.
-
-For example, if you want to generate 10 folders under `organization/123456`, you can update the `config.yaml` file to the following:
-```
-output_path: '.'
-output_file_name_prefix: testing
-
-root_resource_type: organization
-root_resource_id: 123456
-
-resource_structure:
-  - resource_count: 10
-    folder: []
-```
-If you want to add 5 projects per folder, you can add resource type `project` and the count of the project under `folder`.
-
-The following configuration will generate 10 folders and 50 projects (5 projects per folder).
-```
-output_path: '.'
-output_file_name_prefix: testing
-
-root_resource_type: organization
-root_resource_id: 123456
-
-resource_structure:
-  - resource_count: 10
-    folder:
-      - resource_count: 10
-        project: []
+### Step 1: Clone Repository
+```sh
+git clone https://github.com/yourusername/forseti-security-project.git
+cd forseti-security-project
 ```
 
-You can add more resource types as long as the structure is correct (i.e. defining 
-the [correct sub resource under each of the resources](#allowed-sub-resources))
+### Step 2: Deploy Forseti Using Terraform
+1. Initialize Terraform:
+```sh
+terraform init
+```
+2. Apply configuration:
+```sh
+terraform apply -auto-approve
+```
+3. Verify Forseti installation:
+```sh
+gcloud compute instances list --filter="name~forseti"
+```
 
-# Adding a new resource type
+### Step 3: Configure IAM Policy Monitoring
+1. Enable policy scanner:
+```sh
+gcloud projects add-iam-policy-binding forseti-security \
+    --member=user:your-email@example.com \
+    --role=roles/viewer
+```
+2. Run Forseti inventory:
+```sh
+forseti inventory create
+```
+3. Scan IAM policies:
+```sh
+forseti scanner run
+```
 
-- Update data/resource_template.py 
-  - ```
-    # Add a new CAI resource template for the <NEW_RESOURCE_TYPE> and stub out the important variables.
-    # An example would look something similar to the following:
-    <NEW_RESOURCE_TYPE> = '''
-    {{
-        "name":"...",
-        "asset_type":"...",
-        "resource":{{
-            "version":"...",
-            "discovery_document_uri":"...",
-            "discovery_name":"...",
-            "parent":"...",
-            "data":{{
-                ........
-            }}
-        }}
-    }}
-    ```
+### Step 4: Enable Alerts & Logging
+1. Set up Stackdriver logging:
+```sh
+gcloud logging sinks create forseti-alerts \
+    --destination=pubsub.googleapis.com/projects/YOUR_PROJECT_ID/topics/forseti-alerts
+```
+2. Subscribe to alerts:
+```sh
+gcloud pubsub subscriptions create forseti-alerts-subscription \
+    --topic=forseti-alerts
+```
 
-- Update data/resource.py 
-  - ```
-    # Add a generate_<NEW_RESOURCE_TYPE> function.
-    
-    def generate_<NEW_RESOURCE_TYPE>(parent_resource, resource_id=''):
-    """Generate <NEW_RESOURCE_TYPE> resource.
+## Use Cases
+- **Monitoring Cloud IAM Policies**: Track access changes and enforce security best practices.
+- **Automated Security Auditing**: Identify misconfigured resources and fix them proactively.
+- **Policy Compliance Enforcement**: Enforce organization-wide security standards.
+- **Real-Time Security Alerting**: Get notified of policy violations instantly.
 
-    Args:
-        parent_resource (Resource): The parent resource.
-        resource_id (str): The resource id for this resource.
+## Enhancements & Future Improvements
+- **CI/CD Integration**: Automate security scanning in a CI/CD pipeline.
+- **Custom Security Rules**: Develop custom rules for specific GCP security policies.
+- **Multi-Cloud Support**: Expand Forseti capabilities to support hybrid cloud environments.
+- **Dashboards & Reporting**: Integrate with visualization tools like Grafana for better insights.
 
-    Returns:
-        Resource: A resource object.
-    """
-    pass
-    
-    # Update RESOURCE_GENERATOR_FACTORY variable to include a reference to the function.
-    
-    RESOURCE_GENERATOR_FACTORY = {
-      ...
-      <NEW_RESOURCE_TYPE>: generate_<NEW_RESOURCE_TYPE>
-    }
+## Contributions
+If you’d like to contribute, feel free to fork this repository, make improvements, and submit a pull request.
 
-    # Update RESOURCE_DEPENDENCY_MAP variable to reflect the correct dependecy of the newly added resource type.
-    
-    RESOURCE_DEPENDENCY_MAP = {
-      ...
-      <PARENT_OF_NEW_RESOURCE_TYPE>: [<NEW_RESOURCE_TYPE>]
-      <NEW_RESOURCE_TYPE>: []
-    }
-    
-    ```
+## License
+This project is open-source and available under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+---
+**Author:** Dalayi Yuvaraju  
+
+
